@@ -5,13 +5,23 @@ import secrets
 import getopt
 import string
 import os
+import getpass
+import base64
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
-SECRETS_FILE = f"{os.path.expanduser('~')}{os.sep}.pysecgen_secret"
-SALT_FILE = f"{SECRETS_FILE}_salt"
+HOME  = f"{os.path.expanduser('~')}"
+LOAD  = "LOAD"
+STORE = "STORE"
 
+
+SECRETS_PATH = f"{HOME}{os.sep}.pysecgen_secret"
+SALT_PATH = f"{HOME}{os.sep}.pysecgen_salt"
+PLATFORM = None
+MODE = None
+NEWPASS = None
+PRINTPASS = False
 
 def printHelp():
     helpString = ""
@@ -25,6 +35,7 @@ def printHelp():
 #    helpString +=  "  -H <pass>            Hash using sha512_256 and print hashed <pass> to screen\n"
 #    helpString +=  "Written by Costinteo for Informatics Systems Security course at University of Bucharest\n"
     print(helpString, end="")
+    sys.exit(0)
 
 def genPass(length):
     length = int(length)
@@ -38,34 +49,136 @@ def genPass(length):
             break
     return password
 
+def storePass(): 
+    f = Fernet(MASTERKEY)
+    secretFile = open(SECRETS_PATH, getFileMode())
+    print(f"{PLATFORM} {NEWPASS}")
+    encryptedLine = f.encrypt(bytes(f"{PLATFORM} {NEWPASS}", "UTF-8"))
+    print(encryptedLine.decode("UTF-8"))
+    secretFile.write(f"{encryptedLine}\n")
+    secretFile.close()
 
-optfuncs = {
-    "-h" : printHelp,
-    "-p" : genPass,
-    "-s" : storePass,
-    "-l" : loadPass,
-    "-f" : setSecretFile
-}
+def loadPass():
+    f = Fernet(MASTERKEY)
+    secretFile = open(SECRETS_PATH, getFileMode())
+
+    for encryptedLine in secretFile.readlines():
+        platform, decryptedPass = f.decrypt(bytes(encryptedLine[:-1], "UTF-8")).decode("UTF-8").split(" ")
+        if platform == PLATFORM:
+            secretFile.close()
+            return decryptedPass
+    secretFile.close()
+    sys.exit("Platform not found in secret file!")
+
+def setMode(mode):
+    global MODE
+
+    if MODE:
+        sys.exit("Arguments -l and -s are mutually exclusive and should only be inputted once!")
+    
+    MODE = mode
+
+def setPlatform(platform):
+    global PLATFORM
+
+    PLATFORM = platform
+
+def getFileMode():
+    if MODE == STORE:
+        return "a"
+    else:
+        return "r"
+
+def genSecretFile():
+    # generate only if not already generated
+    if not os.path.isfile(SECRETS_PATH):
+        open(SECRETS_PATH,"w").close()
+        os.chmod(SECRETS_PATH, 0o600)
+
+def genSaltFile():
+    # generate only if not already generated
+    if not os.path.isfile(SALT_PATH):
+        saltFile = open(SALT_PATH, "w")
+        saltFile.write(secrets.token_hex(16))
+        os.chmod(SALT_PATH, 0o600)
+        saltFile.close()
+
+def setMasterKey():
+    global MASTERKEY
+    saltFile = open(SALT_PATH, "r")
+    salt = bytes.fromhex(saltFile.readline())
+    print(salt)
+    saltFile.close()
+    masterPass = bytes(getpass.getpass(prompt="Enter master pass: "), "UTF-8")
+    #kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=256, salt=salt, iterations=390000,)
+    kdf = Scrypt(salt=salt, length=32, n=2**16, r=8, p=1)
+    MASTERKEY = base64.urlsafe_b64encode(kdf.derive(masterPass))
+
+def setSecretPath(path):
+    global SECRETS_PATH, SALT_PATH
+
+    if os.path.isfile(path) or not os.path.isdir(path):
+        sys.exit("Please input an existing directory to save the secret files to!")
+
+    # trim ending slash
+    if path[-1] == os.sep:
+        path = path[:-1]
+
+    SECRETS_PATH = f"{path}{os.sep}.pysecgen_secret"
+    SALT_PATH = f"{path}{os.sep}.pysecgen_salt"
+
+def isRoot():
+    return os.geteuid() == 0
 
 if __name__ == "__main__":
-    optlist, args = getopt.gnu_getopt(sys.argv[1:], "hp:s:l:f:")
+    if not isRoot():
+        sys.exit("Please run as root.")
 
-    print(SECRETS_FILE)
+    try:
+        optlist, args = getopt.gnu_getopt(sys.argv[1:], "hp:s:l:f:", ["help", "print"])
+    except:
+        sys.exit("Wrong arguments given! See pysecgen --help for usage.")
 
     if len(optlist) == 0:
-        "No arguments given! See pysecgen --help for usage." 
-        exit(1)
+        sys.exit("No arguments given! See pysecgen --help for usage.")
 
     for flag, arg in optlist:
-        if flag == "-h":
-            printHelp();
-            exit(0)
-        optfuncs[flag](arg)
+        if flag == "-h" or flag == "--help":
+            printHelp()
+        elif flag == "-s":
+            setMode(STORE)
+            setPlatform(arg)
+        elif flag == "-l":
+            setMode(LOAD)
+            setPlatform(arg)
+        elif flag == "-f":
+            setSecretPath(arg)
+        elif flag == "-p":
+            NEWPASS = genPass(arg)
+        elif flag == "--print":
+            PRINTPASS = True
+    
+    # generate files if not generated
+    genSecretFile()
+    genSaltFile()
+
+    setMasterKey()
+
+    if MODE == LOAD:
+        pw = loadPass()
+        print(pw)
+    elif MODE == STORE:
+        NEWPASS = getpass.getpass(f"New password for platform {PLATFORM}: ") if not NEWPASS else NEWPASS
+        storePass()
+        if PRINTPASS:
+            print(NEWPASS)
+
+        
+
+    
+        
 
 # to do:
-# check if script is being ran as root
-# check if files exist, otherwise generate them as root (or maybe as special group)
-# generate key from master pass using sha256 + salt (also stored in separate file)
 # encrypt password and write to secret file
 # use input() hiding characters so history logs are not stored
 
