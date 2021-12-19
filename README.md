@@ -25,7 +25,14 @@ $ cd pysecgen
 $ chmod +x pysecgen.py
 ```
 
-You should also probably put it on $PATH and alias it.
+You should also probably put it on $PATH and alias it. This is what I have (make sure to put in YOUR home, instead of "costinteo"):
+
+```
+alias pysecload='sudo /path/to/pysecgen.py -f /home/costinteo/ -l'
+alias pysecstore='sudo /path/to/pysecgen.py -f /home/costinteo/ -p 20 --print -s'
+```
+
+So now you only need to call it like ``pysecload PLATFORM`` or ``pysecstore PLATFORM``.
 
 ## Example usage
 
