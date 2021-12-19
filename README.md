@@ -1,7 +1,5 @@
 # pysecgen
 
-## Description
-
 Simple security tool written in Python for generating and managing secure passwords. It uses the [cryptography](https://github.com/pyca/cryptography) module.
 
 ## Dependencies
@@ -46,7 +44,7 @@ $ sudo ./pysecgen.py -l Steam
 For more info, check the usage text:
 
 ```
-Simple password managing tool written in Python, using the cryptography wrapper library.
+Simple password managing tool written in Python, using the cryptography module.
 Usage: pysecgen [options]
 Options:
   -h, --help           Print this help and exit
