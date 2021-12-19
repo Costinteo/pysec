@@ -22,7 +22,16 @@ You can probably get it on anything, but I've only tested on Linux.
 ```
 $ git clone https://github.com/Costinteo/pysecgen.git
 $ cd pysecgen
-$ chmod +x pysecgen
+$ chmod +x pysecgen.py
 ```
 
 You should also probably put it on $PATH and alias it.
+
+## Example usage
+
+The following usage generates a password of 20 characters and stores in an encrypted format in ``/root/.pysecgen_secret`` for the Steam platform. Then we load it.
+
+```
+$ sudo ./pysecgen.py -s Steam -p 20
+$ sudo ./pysecgen.py -l Steam
+```

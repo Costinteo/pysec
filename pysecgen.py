@@ -84,7 +84,7 @@ def setMode(mode):
 def setPlatform(platform):
     global PLATFORM
 
-    PLATFORM = platform
+    PLATFORM = platform.lower()
 
 def getFileMode():
     if MODE == STORE:
