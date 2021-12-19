@@ -23,23 +23,28 @@ MODE = None
 NEWPASS = None
 PRINTPASS = False
 
-FERNET = False
+FERNET = None
 
 def printHelp():
     helpString = ""
+    helpString +=  "Simple password managing tool written in Python, using the cryptography module.\n"
     helpString +=  "Usage: pysecgen [options]\n"
     helpString +=  "Options:\n"
-#    helpString += f"  -p <length>          Generate password of <length> [min {MIN_PASS_LEN}] characters\n"
-#    helpString += f"  -u <length>          Generate URL-safe of <length> [min {MIN_URL_LEN}] bytes\n"
-#    helpString += f"  -t <length>          Generate token of <length> [min {MIN_TOKEN_LEN} bytes] hex values\n"
-#    helpString +=  "  -c <seq1> <seq2>     Checks if <seq1> and <seq2> are identical\n"
-#    helpString +=  "  -b <length>          Generate binary key sequence of <length> digits\n"
-#    helpString +=  "  -H <pass>            Hash using sha512_256 and print hashed <pass> to screen\n"
-#    helpString +=  "Written by Costinteo for Informatics Systems Security course at University of Bucharest\n"
+    helpString +=  "  -h, --help           Print this help and exit\n"
+    helpString +=  "  -p <length>          Generate random password of <length> characters\n"
+    helpString +=  "                       [Use with -s argument to store the newly generated pass]\n\n"
+    helpString +=  "  -s <platform>        Encrypt and store password for <platform>\n"
+    helpString +=  "  -l <platform>        Load and decrypt password for <platform>\n"
+    helpString +=  "  -f <dirpath>         Path to directory in which to save the secret files\n"
+    helpString +=  "                       [Defaults are /root/.pysecgen_secret and /root/.pysecgen_salt]\n\n"
+    helpString +=  "Written by Costinteo. Licensed under GPL v3.\n"
+    helpString +=  "For more information, access: <https://github.com/Costinteo>\n"
     print(helpString, end="")
     sys.exit(0)
 
 def genPass(length):
+    if NEWPASS:
+        sys.exit("Only one password can be generated at a time!")
     length = int(length)
     alphabet = string.ascii_letters + string.digits + string.punctuation
     while True:
@@ -53,9 +58,7 @@ def genPass(length):
 
 def storePass(): 
     secretFile = open(SECRETS_PATH, getFileMode())
-    print(f"{PLATFORM} {NEWPASS}")
     encryptedLine = FERNET.encrypt(bytes(f"{PLATFORM} {NEWPASS}", "UTF-8"))
-    print(encryptedLine.decode())
     secretFile.write(f"{encryptedLine.decode('UTF-8')}\n")
     secretFile.close()
 
@@ -109,10 +112,8 @@ def setMasterKey():
     global MASTERKEY
     saltFile = open(SALT_PATH, "r")
     salt = bytes.fromhex(saltFile.readline())
-    print(salt)
     saltFile.close()
     masterPass = bytes(getpass.getpass(prompt="Enter master pass: "), "UTF-8")
-    #kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=256, salt=salt, iterations=390000,)
     kdf = Scrypt(salt=salt, length=32, n=2**16, r=8, p=1)
     MASTERKEY = base64.urlsafe_b64encode(kdf.derive(masterPass))
 
@@ -143,7 +144,7 @@ if __name__ == "__main__":
 
     if len(optlist) == 0:
         sys.exit("No arguments given! See pysecgen --help for usage.")
-
+    
     for flag, arg in optlist:
         if flag == "-h" or flag == "--help":
             printHelp()
@@ -178,8 +179,3 @@ if __name__ == "__main__":
         storePass()
         if PRINTPASS:
             print(NEWPASS)   
-        
-
-# to do:
-# encrypt password and write to secret file
-
