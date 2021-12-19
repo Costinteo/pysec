@@ -23,6 +23,8 @@ MODE = None
 NEWPASS = None
 PRINTPASS = False
 
+FERNET = False
+
 def printHelp():
     helpString = ""
     helpString +=  "Usage: pysecgen [options]\n"
@@ -50,20 +52,18 @@ def genPass(length):
     return password
 
 def storePass(): 
-    f = Fernet(MASTERKEY)
     secretFile = open(SECRETS_PATH, getFileMode())
     print(f"{PLATFORM} {NEWPASS}")
-    encryptedLine = f.encrypt(bytes(f"{PLATFORM} {NEWPASS}", "UTF-8"))
-    print(encryptedLine.decode("UTF-8"))
-    secretFile.write(f"{encryptedLine}\n")
+    encryptedLine = FERNET.encrypt(bytes(f"{PLATFORM} {NEWPASS}", "UTF-8"))
+    print(encryptedLine.decode())
+    secretFile.write(f"{encryptedLine.decode('UTF-8')}\n")
     secretFile.close()
 
 def loadPass():
-    f = Fernet(MASTERKEY)
     secretFile = open(SECRETS_PATH, getFileMode())
 
     for encryptedLine in secretFile.readlines():
-        platform, decryptedPass = f.decrypt(bytes(encryptedLine[:-1], "UTF-8")).decode("UTF-8").split(" ")
+        platform, decryptedPass = FERNET.decrypt(bytes(encryptedLine[:-1], "UTF-8")).decode("UTF-8").split(" ")
         if platform == PLATFORM:
             secretFile.close()
             return decryptedPass
@@ -92,12 +92,14 @@ def getFileMode():
 def genSecretFile():
     # generate only if not already generated
     if not os.path.isfile(SECRETS_PATH):
+        print(f"Generated secret file at {SECRETS_PATH}")
         open(SECRETS_PATH,"w").close()
         os.chmod(SECRETS_PATH, 0o600)
 
 def genSaltFile():
     # generate only if not already generated
     if not os.path.isfile(SALT_PATH):
+        print(f"Generated salt file at {SALT_PATH}")
         saltFile = open(SALT_PATH, "w")
         saltFile.write(secrets.token_hex(16))
         os.chmod(SALT_PATH, 0o600)
@@ -157,12 +159,16 @@ if __name__ == "__main__":
             NEWPASS = genPass(arg)
         elif flag == "--print":
             PRINTPASS = True
-    
+
+    if not MODE:
+        sys.exit("No mode and platform specified! See pysecgen --help for usage.")
+
     # generate files if not generated
     genSecretFile()
     genSaltFile()
 
     setMasterKey()
+    FERNET = Fernet(MASTERKEY)
 
     if MODE == LOAD:
         pw = loadPass()
@@ -171,14 +177,9 @@ if __name__ == "__main__":
         NEWPASS = getpass.getpass(f"New password for platform {PLATFORM}: ") if not NEWPASS else NEWPASS
         storePass()
         if PRINTPASS:
-            print(NEWPASS)
-
-        
-
-    
+            print(NEWPASS)   
         
 
 # to do:
 # encrypt password and write to secret file
-# use input() hiding characters so history logs are not stored
 
