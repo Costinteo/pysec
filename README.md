@@ -2,6 +2,8 @@
 
 Simple security tool written in Python for generating and managing secure passwords. It uses the [cryptography](https://github.com/pyca/cryptography) module.
 
+Generates random passwords of variable lengths, encrypts them using a key given by the user (a master password) and saves them in a secret file with restrictive (root) permissions.
+
 ## Dependencies
 ```
 Python        >=  3.8.10

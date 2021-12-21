@@ -67,7 +67,7 @@ def loadPass():
 
     for encryptedLine in secretFile.readlines():
         platform, decryptedPass = FERNET.decrypt(bytes(encryptedLine[:-1], "UTF-8")).decode("UTF-8").split(" ")
-        if platform == PLATFORM:
+        if secrets.compare_digest(platform, PLATFORM):
             secretFile.close()
             return decryptedPass
     secretFile.close()
